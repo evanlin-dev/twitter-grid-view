@@ -1,40 +1,39 @@
-import React, { useState } from 'react'; // Remove useEffect
+import React, { useState } from 'react'; 
 import './App.css';
 
 function App() {
-  const [users, setUsers] = useState([]); // Initialize users as an empty array
+  const [users, setUsers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const handleFileUpload = async (event) => {
-    const file = event.target.files[0]; // Get the uploaded file
-    console.log("File selected:", file); // Log the selected file
+    const file = event.target.files[0];
+    console.log("File selected:", file);
 
     const reader = new FileReader();
 
     reader.onload = async (e) => {
       try {
-        const jsonData = JSON.parse(e.target.result); // Parse JSON data
-        console.log("Parsed JSON data:", jsonData); // Log parsed JSON data
+        const jsonData = JSON.parse(e.target.result);
+        console.log("Parsed JSON data:", jsonData);
 
-        // Set users state with the parsed data
         if (Array.isArray(jsonData)) {
-          setUsers(jsonData); // Set users state directly from JSON
+          setUsers(jsonData);
         } else {
           console.warn("JSON data is not an array:", jsonData);
         }
 
-        console.log("Data loaded:", jsonData); // Log loaded data
+        console.log("Data loaded:", jsonData);
       } catch (error) {
         console.error("Error parsing JSON:", error);
       }
     };
 
     if (file) {
-      reader.readAsText(file); // Read the file as text
+      reader.readAsText(file);
     } else {
-      console.log("No file selected."); // Log if no file is selected
+      console.log("No file selected.");
     }
   };
 
@@ -67,7 +66,7 @@ function App() {
       <div className="header">
         <h1>Twitter User Feed</h1>
         <p className="post-count">Total Posts: {users.length}</p>
-        <input type="file" accept=".json" onChange={handleFileUpload} /> {/* File upload input */}
+        <input type="file" accept=".json" onChange={handleFileUpload} />
       </div>
       <div className="container">
         {users.length > 0 ? (
