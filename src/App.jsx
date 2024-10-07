@@ -51,7 +51,7 @@ function App() {
     reader.onload = async (e) => {
       try {
         const jsonData = JSON.parse(e.target.result);
-
+  
         console.log('Uploaded JSON data:', jsonData);
   
         if (Array.isArray(jsonData)) {
@@ -127,6 +127,13 @@ function App() {
     }
   };
 
+  // Add functionality to submit tag with Enter key
+  const handleKeyPress = (e, userId) => {
+    if (e.key === 'Enter') {
+      addTag(userId);
+    }
+  };
+
   const removeTag = async (userId, tagToRemove) => {
     const updatedUsers = users.map((user) => {
       if (user.id === userId) {
@@ -145,12 +152,14 @@ function App() {
     setSelectedImages(images);
     setCurrentImageIndex(index);
     setIsModalOpen(true);
+    document.addEventListener('keydown', handleKeyDown); // Add keydown event listener
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedImages([]);
     setCurrentImageIndex(0);
+    document.removeEventListener('keydown', handleKeyDown); // Clean up the listener
   };
 
   const nextImage = () => {
@@ -159,6 +168,14 @@ function App() {
 
   const prevImage = () => {
     setCurrentImageIndex((prevIndex) => (prevIndex - 1 + selectedImages.length) % selectedImages.length);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'ArrowRight') {
+      nextImage();
+    } else if (e.key === 'ArrowLeft') {
+      prevImage();
+    }
   };
 
   const downloadJSON = () => {
@@ -262,6 +279,7 @@ function App() {
                   placeholder="Add a tag..."
                   value={tagInputs[user.id] || ''}
                   onChange={(e) => handleTagInputChange(e, user.id)}
+                  onKeyPress={(e) => handleKeyPress(e, user.id)} // Handle Enter key press
                 />
                 <button onClick={() => addTag(user.id)}>Add Tag</button>
               </div>
