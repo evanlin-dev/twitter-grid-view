@@ -284,17 +284,13 @@ function App() {
                   <ul>
                     {user.media.map((mediaItem, index) => (
                       <li key={index}>
-                        {mediaItem.type === 'video' ||
-                          mediaItem.type === 'animated_gif' ? (
+                        {mediaItem.type === 'video' || mediaItem.type === 'animated_gif' ? (
                           <video
                             controls
                             style={{ cursor: 'pointer', width: '100%' }}
                             onClick={() => openModal(user.media, index)}
                           >
-                            <source
-                              src={mediaItem.original}
-                              type="video/mp4"
-                            />
+                            <source src={mediaItem.original} type="video/mp4" />
                             Your browser does not support the video tag.
                           </video>
                         ) : (
