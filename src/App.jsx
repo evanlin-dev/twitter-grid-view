@@ -1,40 +1,144 @@
-import React, { useState } from 'react'; 
+import React, { useState, useEffect } from 'react';
+import { openDB } from 'idb';
+import Select from 'react-select';
 import './App.css';
 
 function App() {
   const [users, setUsers] = useState([]);
+  const [tagInputs, setTagInputs] = useState({});
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [uniqueTags, setUniqueTags] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  const handleFileUpload = async (event) => {
-    const file = event.target.files[0];
-    console.log("File selected:", file);
+  useEffect(() => {
+    const loadUsersFromIDB = async () => {
+      const db = await openDB('twitterDB', 1, {
+        upgrade(db) {
+          if (!db.objectStoreNames.contains('users')) {
+            const store = db.createObjectStore('users', { keyPath: 'id' });
+            store.createIndex('sequence', 'sequence');
+          }
+        },
+      });
 
-    const reader = new FileReader();
+      const tx = db.transaction('users', 'readonly');
+      const store = tx.objectStore('users');
+      const index = store.index('sequence');
+      const allUsers = await index.getAll();
 
-    reader.onload = async (e) => {
-      try {
-        const jsonData = JSON.parse(e.target.result);
-        console.log("Parsed JSON data:", jsonData);
-
-        if (Array.isArray(jsonData)) {
-          setUsers(jsonData);
-        } else {
-          console.warn("JSON data is not an array:", jsonData);
-        }
-
-        console.log("Data loaded:", jsonData);
-      } catch (error) {
-        console.error("Error parsing JSON:", error);
+      if (allUsers.length > 0) {
+        setUsers(allUsers);
       }
     };
 
+    loadUsersFromIDB();
+  }, []);
+
+  useEffect(() => {
+    const tags = new Set();
+    users.forEach(user => {
+      user.tags?.forEach(tag => tags.add(tag));
+    });
+    setUniqueTags([...tags]);
+  }, [users]);
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    const reader = new FileReader();
+  
+    reader.onload = async (e) => {
+      try {
+        const jsonData = JSON.parse(e.target.result);
+
+        console.log('Uploaded JSON data:', jsonData);
+  
+        if (Array.isArray(jsonData)) {
+          const userTagsMap = users.reduce((acc, user) => {
+            acc[user.id] = user.tags || [];
+            return acc;
+          }, {});
+  
+          const updatedUsers = jsonData.map(user => {
+            const existingTags = userTagsMap[user.id] || [];
+            return {
+              ...user,
+              tags: user.tags ? [...existingTags, ...user.tags] : existingTags,
+            };
+          });
+  
+          setUsers(updatedUsers);
+          await saveUsersToIDB(updatedUsers);
+        } else {
+          console.warn('JSON data is not an array:', jsonData);
+        }
+      } catch (error) {
+        console.error('Error parsing JSON:', error);
+      }
+    };
+  
     if (file) {
       reader.readAsText(file);
-    } else {
-      console.log("No file selected.");
     }
+  };
+
+  const saveUsersToIDB = async (usersData) => {
+    const db = await openDB('twitterDB', 1);
+    const tx = db.transaction('users', 'readwrite');
+    const store = tx.objectStore('users');
+
+    await store.clear();
+
+    usersData.forEach((user, index) => {
+      user.sequence = index;
+      user.tags = user.tags || [];
+      store.put(user);
+    });
+
+    await tx.done;
+  };
+
+  const handleTagInputChange = (e, userId) => {
+    setTagInputs((prev) => ({
+      ...prev,
+      [userId]: e.target.value,
+    }));
+  };
+
+  const addTag = async (userId) => {
+    const newTag = tagInputs[userId]?.trim();
+    if (newTag) {
+      const updatedUsers = users.map((user) => {
+        if (user.id === userId) {
+          return {
+            ...user,
+            tags: [...(user.tags || []), newTag],
+          };
+        }
+        return user;
+      });
+      setUsers(updatedUsers);
+      await saveUsersToIDB(updatedUsers);
+      setTagInputs((prev) => ({
+        ...prev,
+        [userId]: '',
+      }));
+    }
+  };
+
+  const removeTag = async (userId, tagToRemove) => {
+    const updatedUsers = users.map((user) => {
+      if (user.id === userId) {
+        return {
+          ...user,
+          tags: user.tags.filter(tag => tag !== tagToRemove),
+        };
+      }
+      return user;
+    });
+    setUsers(updatedUsers);
+    await saveUsersToIDB(updatedUsers);
   };
 
   const openModal = (images, index) => {
@@ -50,27 +154,74 @@ function App() {
   };
 
   const nextImage = () => {
-    setCurrentImageIndex((prevIndex) =>
-      (prevIndex + 1) % selectedImages.length
-    );
+    setCurrentImageIndex((prevIndex) => (prevIndex + 1) % selectedImages.length);
   };
 
   const prevImage = () => {
-    setCurrentImageIndex((prevIndex) =>
-      (prevIndex - 1 + selectedImages.length) % selectedImages.length
-    );
+    setCurrentImageIndex((prevIndex) => (prevIndex - 1 + selectedImages.length) % selectedImages.length);
   };
+
+  const downloadJSON = () => {
+    const dataStr = JSON.stringify(users, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'users_data.json';
+    link.click();
+
+    URL.revokeObjectURL(url);
+  };
+
+  const filteredUsers = selectedTags.length > 0
+    ? users.filter(user => user.tags.some(tag => selectedTags.map(t => t.value).includes(tag)))
+    : users;
+
+  const tagOptions = uniqueTags.map(tag => ({ value: tag, label: tag }));
 
   return (
     <>
       <div className="header">
         <h1>Twitter User Feed</h1>
-        <p className="post-count">Total Posts: {users.length}</p>
+        <p className="post-count">Total Posts: {filteredUsers.length}</p>
         <input type="file" accept=".json" onChange={handleFileUpload} />
+        <button onClick={downloadJSON}>Download JSON</button>
+        <div className="tag-filter-container">
+          <label htmlFor="tag-filter">Filter by Tags: </label>
+          <Select
+            isMulti
+            options={tagOptions}
+            className="basic-multi-select"
+            classNamePrefix="select"
+            onChange={setSelectedTags}
+            closeMenuOnSelect={false}
+            placeholder="Select tags..."
+            styles={{
+              control: (provided) => ({
+                ...provided,
+                width: '250px',
+                backgroundColor: '#333',
+                border: '1px solid #555',
+              }),
+              menu: (provided) => ({
+                ...provided,
+                backgroundColor: '#333',
+                color: '#fff',
+                width: '250px',
+              }),
+              option: (provided, state) => ({
+                ...provided,
+                backgroundColor: state.isFocused ? '#1DA1F2' : '#333',
+                color: state.isFocused ? '#fff' : '#fff',
+              }),
+            }}
+          />
+        </div>
       </div>
       <div className="container">
-        {users.length > 0 ? (
-          users.map((user) => (
+        {filteredUsers.length > 0 ? (
+          filteredUsers.map((user) => (
             <div className="user-card" key={user.id}>
               <h2>
                 <a
@@ -91,25 +242,53 @@ function App() {
               >
                 View Original Tweet
               </a>
+
+              <div className="tags">
+                {user.tags && user.tags.length > 0 ? (
+                  user.tags.map((tag, index) => (
+                    <span key={index} className="tag">
+                      {tag}
+                      <button className="delete-button" onClick={() => removeTag(user.id, tag)}>x</button>
+                    </span>
+                  ))
+                ) : (
+                  <p>No tags added yet.</p>
+                )}
+              </div>
+
+              <div className="add-tag">
+                <input
+                  type="text"
+                  placeholder="Add a tag..."
+                  value={tagInputs[user.id] || ''}
+                  onChange={(e) => handleTagInputChange(e, user.id)}
+                />
+                <button onClick={() => addTag(user.id)}>Add Tag</button>
+              </div>
+
               {user.media && user.media.length > 0 && (
                 <div className="user-media">
                   <h3>Media:</h3>
                   <ul>
                     {user.media.map((mediaItem, index) => (
                       <li key={index}>
-                        {mediaItem.type === 'video' || mediaItem.type === 'animated_gif' ? (
+                        {mediaItem.type === 'video' ||
+                          mediaItem.type === 'animated_gif' ? (
                           <video
                             controls
                             style={{ cursor: 'pointer', width: '100%' }}
                             onClick={() => openModal(user.media, index)}
                           >
-                            <source src={mediaItem.original} type="video/mp4" />
+                            <source
+                              src={mediaItem.original}
+                              type="video/mp4"
+                            />
                             Your browser does not support the video tag.
                           </video>
                         ) : (
                           <img
                             src={mediaItem.original}
-                            alt={`Image for ${user.screen_name}`}
+                            alt="Media"
                             onClick={() => openModal(user.media, index)}
                             style={{ cursor: 'pointer' }}
                           />
@@ -122,33 +301,18 @@ function App() {
             </div>
           ))
         ) : (
-          <div>No users found.</div>
+          <p>No users found.</p>
         )}
       </div>
 
       {isModalOpen && (
-        <div className="modal" onClick={closeModal}>
-          {selectedImages.length > 1 && (
-            <span className="arrow left-arrow" onClick={(e) => { e.stopPropagation(); prevImage(); }}>&lt;</span>
-          )}
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            {selectedImages[currentImageIndex].type === 'video' ? (
-              <video controls className="modal-image">
-                <source src={selectedImages[currentImageIndex].original} type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
-            ) : (
-              <img
-                src={selectedImages[currentImageIndex].original}
-                alt="Enlarged"
-                className="modal-image"
-              />
-            )}
+        <div className="modal">
+          <div className="modal-content">
+            <span className="close" onClick={closeModal}>&times;</span>
+            <span className="arrow left-arrow" onClick={prevImage}>&lt;</span>
+            <img className="modal-image" src={selectedImages[currentImageIndex]?.original} alt="Selected" />
+            <span className="arrow right-arrow" onClick={nextImage}>&gt;</span>
           </div>
-          {selectedImages.length > 1 && (
-            <span className="arrow right-arrow" onClick={(e) => { e.stopPropagation(); nextImage(); }}>&gt;</span>
-          )}
-          <span className="close" onClick={closeModal}>&times;</span>
         </div>
       )}
     </>

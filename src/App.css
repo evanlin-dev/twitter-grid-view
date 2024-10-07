@@ -3,6 +3,17 @@
   margin-bottom: 20px; 
 }
 
+.tag-filter-container {
+  display: inline-block;
+  text-align: left;
+  margin-top: 10px;
+  margin-left: 5em;
+}
+
+.select__control {
+  margin: 0 auto;
+}
+
 .post-count {
   font-size: 18px; 
   color: #555; 
@@ -96,4 +107,65 @@
   color: #fff; 
   cursor: pointer; 
   z-index: 1100; 
+}
+
+.add-tag {
+  display: flex;
+  margin-top: 10px;
+}
+
+.add-tag input {
+  flex: 1;
+  padding: 5px;
+  margin-right: 5px;
+}
+
+.add-tag input::placeholder {
+  color: #888;
+}
+
+.add-tag input:focus {
+  outline: none;
+  border-color: #1DA1F2;
+}
+
+.add-tag button {
+  padding: 5px 10px;
+  background-color: #1DA1F2;
+  border: none;
+  border-radius: 3px;
+  color: #fff;
+  cursor: pointer;
+}
+
+.add-tag button:hover {
+  background-color: #0c7bbf;
+}
+
+.add-tag button:active {
+  background-color: #0a6ba8;
+}
+
+.tag {
+  display: inline-block;
+  background-color: #555;
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 3px;
+  margin-right: 5px;
+}
+
+.delete-button {
+  background-color: #e74c3c;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin-left: 5px;
+}
+
+.delete-button:hover {
+  background-color: #c0392b;
 }
