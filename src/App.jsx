@@ -47,19 +47,19 @@ function App() {
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     const reader = new FileReader();
-  
+
     reader.onload = async (e) => {
       try {
         const jsonData = JSON.parse(e.target.result);
-  
+
         console.log('Uploaded JSON data:', jsonData);
-  
+
         if (Array.isArray(jsonData)) {
           const userTagsMap = users.reduce((acc, user) => {
             acc[user.id] = user.tags || [];
             return acc;
           }, {});
-  
+
           const updatedUsers = jsonData.map(user => {
             const existingTags = userTagsMap[user.id] || [];
             return {
@@ -67,7 +67,7 @@ function App() {
               tags: user.tags ? [...existingTags, ...user.tags] : existingTags,
             };
           });
-  
+
           setUsers(updatedUsers);
           await saveUsersToIDB(updatedUsers);
         } else {
@@ -77,7 +77,7 @@ function App() {
         console.error('Error parsing JSON:', error);
       }
     };
-  
+
     if (file) {
       reader.readAsText(file);
     }
@@ -152,29 +152,23 @@ function App() {
     setSelectedImages(images);
     setCurrentImageIndex(index);
     setIsModalOpen(true);
-    document.addEventListener('keydown', handleKeyDown); // Add keydown event listener
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedImages([]);
     setCurrentImageIndex(0);
-    document.removeEventListener('keydown', handleKeyDown); // Clean up the listener
   };
 
   const nextImage = () => {
-    setCurrentImageIndex((prevIndex) => (prevIndex + 1) % selectedImages.length);
+    if (selectedImages.length > 1) {
+      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % selectedImages.length);
+    }
   };
 
   const prevImage = () => {
-    setCurrentImageIndex((prevIndex) => (prevIndex - 1 + selectedImages.length) % selectedImages.length);
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'ArrowRight') {
-      nextImage();
-    } else if (e.key === 'ArrowLeft') {
-      prevImage();
+    if (selectedImages.length > 1) {
+      setCurrentImageIndex((prevIndex) => (prevIndex - 1 + selectedImages.length) % selectedImages.length);
     }
   };
 
@@ -325,12 +319,16 @@ function App() {
 
       {isModalOpen && (
         <div className="modal">
-          <div className="modal-content">
-            <span className="close" onClick={closeModal}>&times;</span>
+          {selectedImages.length > 1 && (
             <span className="arrow left-arrow" onClick={prevImage}>&lt;</span>
+          )}
+          <div className="modal-content">
             <img className="modal-image" src={selectedImages[currentImageIndex]?.original} alt="Selected" />
-            <span className="arrow right-arrow" onClick={nextImage}>&gt;</span>
           </div>
+          {selectedImages.length > 1 && (
+            <span className="arrow right-arrow" onClick={nextImage}>&gt;</span>
+          )}
+          <span className="close" onClick={closeModal}>&times;</span>
         </div>
       )}
     </>
