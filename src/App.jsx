@@ -127,7 +127,6 @@ function App() {
     }
   };
 
-  // Add functionality to submit tag with Enter key
   const handleKeyPress = (e, userId) => {
     if (e.key === 'Enter') {
       addTag(userId);
@@ -186,16 +185,16 @@ function App() {
   };
 
   const filteredUsers = selectedTags.length > 0
-    ? users.filter(user => user.tags.some(tag => selectedTags.map(t => t.value).includes(tag)))
+    ? users.filter(user => selectedTags.every(tag => user.tags.includes(tag.value)))
     : users;
-
   const tagOptions = uniqueTags.map(tag => ({ value: tag, label: tag }));
 
   return (
     <>
       <div className="header">
         <h1>Twitter User Feed</h1>
-        <p className="post-count">Total Posts: {filteredUsers.length}</p>
+        <p className="post-count">Total Posts: {users.length}</p>
+        <p className="filtered-post-count">Filtered Posts: {filteredUsers.length}</p> {/* New line to display filtered posts */}
         <input type="file" accept=".json" onChange={handleFileUpload} />
         <button onClick={downloadJSON}>Download JSON</button>
         <div className="tag-filter-container">
